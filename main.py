@@ -1,6 +1,7 @@
 import logging
 import os.path
 import datetime
+import sys
 
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -17,9 +18,9 @@ class FlightRateTracker:
         self.log_table = None
 
     def run(self):
-        price = retriever.retrieve_price()
+        price_dict = retriever.retrieve_prices()
         self.read_log()
-        self.append_to_log(price)
+        self.append_to_log(price_dict)
         self.save_log()
         self.plot_history()
 
@@ -27,11 +28,14 @@ class FlightRateTracker:
         logging.info('Plotting results...')
         dates = pd.to_datetime(self.log_table['date'], format='%Y-%m-%d')
         temp_table = pd.DataFrame()
-        temp_table['date'] = self.log_table['price']
+        temp_table['price_recommended'] = self.log_table['price_recommended']
+        temp_table['price_cheapest'] = self.log_table['price_cheapest']
         temp_table = temp_table.set_index(dates)
 
-        plt.plot(temp_table)
+        plt.figure()
+        temp_table.plot()
         plt.gcf().autofmt_xdate()
+        plt.legend()
         plt.show()
 
     def create_log_dir(self):
@@ -39,7 +43,7 @@ class FlightRateTracker:
             os.makedirs(self.log_dir)
 
     def initialize_log_table(self):
-        self.log_table = pd.DataFrame(columns=['date', 'price'])
+        self.log_table = pd.DataFrame(columns=['date', 'price_recommended', 'price_cheapest'])
 
     def read_log(self):
         if not os.path.exists(os.path.join(self.log_dir, self.log_filename)):
@@ -52,12 +56,13 @@ class FlightRateTracker:
         self.create_log_dir()
         self.log_table.to_csv(os.path.join(self.log_dir, self.log_filename), index=False)
 
-    def append_to_log(self, price):
+    def append_to_log(self, price_dict):
         if self.log_table.shape[0] > 0 and str(datetime.datetime.now().date()) == self.log_table.iloc[-1]['date']:
             logging.info("This data won't be recorded because the price today is already logged.")
             return
         self.log_table = self.log_table.append({'date': str(datetime.datetime.now().date()),
-                                                'price': price},
+                                                'price_recommended': price_dict['recommended'],
+                                                'price_cheapest': price_dict['cheapest']},
                                                ignore_index=True)
 
 
